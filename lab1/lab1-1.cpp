@@ -75,6 +75,27 @@ void init(void) {
 }
 
 //-------------------------------callback functions------------------------------------------
+
+void runfilter(GLuint shader, FBOstruct *in1, FBOstruct *in2, FBOstruct *out)
+
+{
+  glUseProgram(shader);
+
+  // Many of these things would be more efficiently done once and for all
+
+  glDisable(GL_CULL_FACE);   // turn off culling
+  glDisable(GL_DEPTH_TEST);  // turn off z buffer
+
+  glUniform1i(glGetUniformLocation(shader, "texUnit"), 0);
+  glUniform1i(glGetUniformLocation(shader, "texUnit2"), 1);
+
+  useFBO(out, in1, in2);
+
+  DrawModel(squareModel, shader, "in_Position", NULL, "in_TexCoord");
+
+  // glFlush();
+}
+
 void display(void) {
   mat4 vm2;
 
@@ -103,6 +124,7 @@ void display(void) {
 
   // Enable Z-buffering
   glEnable(GL_DEPTH_TEST);
+
   // Enable backface culling
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
