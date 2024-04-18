@@ -27,6 +27,6 @@ void main(void)
 	if (specular > 0.0)
 		specular = 1.0 * pow(specular, 150.0);
 	specular = max(specular, 0.0);
-	shade = 0.7*diffuse + 1.0*specular;
+	shade = 0.7*diffuse + 5.0*specular;
 	outColor = vec4(shade, shade, shade, 1.0);
 }

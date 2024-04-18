@@ -3,21 +3,40 @@
 // Switched to low-res Stanford Bunny for more details.
 // No HDR is implemented to begin with. That is your task.
 
-// 2018: No zpr, trackball code added in the main program.
-// 2021: Updated to use LittleOBJLoader.
-// 2022: Cleaned up. Made C++ variant.
-#define MAIN
+// You can compile like this:
+// gcc lab1-1.c ../common/*.c -lGL -o lab1-1 -I../common
 
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef __APPLE__
+// Mac
+#include <OpenGL/gl3.h>
+
+#include "MicroGlut.h"
+// uses framework Cocoa
+#else
+#ifdef WIN32
+// MS
+#include <GL/glew.h>
+#include <GL/glut.h>
+#include <stdio.h>
+#include <windows.h>
+#else
+// Linux
+#include <GL/gl.h>
+#include <stdio.h>
+
+#include "MicroGlut.h"
+//		#include <GL/glut.h>
+#endif
+#endif
+
 #include "GL_utilities.h"
 #include "LittleOBJLoaderX.h"
-#include "MicroGlut.h"
 #include "VectorUtils4.h"
-// uses framework Cocoa
-// uses framework OpenGL
 
 // initial width and heights
 #define W 512
@@ -25,8 +44,10 @@
 
 #define NUM_LIGHTS 4
 
+void OnTimer(int value);
+
 mat4 projectionMatrix;
-mat4 viewMatrix, modelToWorldMatrix;
+mat4 viewMatrix;
 
 GLfloat square[] = {-1, -1, 0, -1, 1, 0, 1, 1, 0, 1, -1, 0};
 GLfloat squareTexCoord[] = {0, 0, 0, 1, 1, 1, 1, 0};
@@ -35,8 +56,9 @@ GLuint squareIndices[] = {0, 1, 2, 0, 2, 3};
 Model *squareModel;
 
 //----------------------Globals-------------------------------------------------
+Point3D cam, point;
 Model *model1;
-FBOstruct *fbo1, *fbo2, *fbo3, *fboFinal;
+FBOstruct *fbo1, *fbo2, *fbo3, *fboFINAL;
 GLuint phongshader = 0, plaintextureshader = 0, lowpassX = 0, lowpassY = 0, add = 0, thres = 0;
 
 //-------------------------------------------------------------------------------------
@@ -52,37 +74,37 @@ void init(void) {
   printError("GL inits");
 
   // Load and compile shaders
-
-  // put tex on teapot
-  plaintextureshader = loadShaders("shaders/plaintextureshader.vert", "shaders/plaintextureshader.frag");
-  phongshader = loadShaders("shaders/phong.vert", "shaders/phong.frag");
-  // cuts down the color values to 1.0 (used for final rendering of teapot
-  lowpassX = loadShaders("shaders/lowpass.vert", "shaders/lowpassX.frag");
-  lowpassY = loadShaders("shaders/lowpass.vert", "shaders/lowpassY.frag");
-  add = loadShaders("shaders/add.vert", "shaders/add.frag");
-  thres = loadShaders("shaders/thres.vert", "shaders/thres.frag");
+  plaintextureshader = loadShaders("plaintextureshader.vert", "plaintextureshader.frag");  // puts texture on teapot
+  phongshader = loadShaders("phong.vert", "phong.frag");  // renders with light (used for initial renderin of teapot)
+  // lowpasshader = loadShaders("lowpass.vert", "lowpass.frag"); //Lowpass shader
+  lowpassX = loadShaders("lowpass.vert", "lowpassX.frag");  // Lowpass shader
+  lowpassY = loadShaders("lowpass.vert", "lowpassY.frag");  // Lowpass shader
+  add = loadShaders("add.vert", "add.frag");                // load shader that combines
+  thres = loadShaders("thres.vert", "thres.frag");          // load shader that creates blooming
   printError("init shader");
 
   fbo1 = initFBO(W, H, 0);
   fbo2 = initFBO(W, H, 0);
   fbo3 = initFBO(W, H, 0);
-  fboFinal = initFBO(W, H, 0);
+  fboFINAL = initFBO(W, H, 0);
 
   // load the model
-  // model1 = LoadModelPlus("../objects/teapot.obj");
-  model1 = LoadModelPlus("../objects/stanford-bunny.obj");
+  //	model1 = LoadModelPlus("teapot.obj");
+  model1 = LoadModelPlus("stanford-bunny.obj");
 
   squareModel = LoadDataToModel((vec3 *)square, NULL, (vec2 *)squareTexCoord, NULL, squareIndices, 4, 6);
+  cam = SetVector(0, 5, 15);
+  point = SetVector(0, 1, 0);
 
-  vec3 cam = vec3(0, 5, 15);
-  vec3 point = vec3(0, 1, 0);
-  vec3 up = vec3(0, 1, 0);
-  viewMatrix = lookAtv(cam, point, up);
-  modelToWorldMatrix = IdentityMatrix();
+  glutTimerFunc(5, &OnTimer, 0);
+}
+
+void OnTimer(int value) {
+  glutPostRedisplay();
+  glutTimerFunc(5, &OnTimer, value);
 }
 
 //-------------------------------callback functions------------------------------------------
-
 void display(void) {
   mat4 vm2;
 
@@ -100,13 +122,14 @@ void display(void) {
   // Activate shader program
   glUseProgram(phongshader);
 
-  vm2 = viewMatrix * modelToWorldMatrix;
+  vm2 = viewMatrix;
   // Scale and place bunny since it is too small
-  vm2 = vm2 * T(0, -8.5, 0);
-  vm2 = vm2 * S(80, 80, 80);
+  vm2 = Mult(vm2, T(0, -8.5, 0));
+  vm2 = Mult(vm2, S(80, 80, 80));
 
   glUniformMatrix4fv(glGetUniformLocation(phongshader, "projectionMatrix"), 1, GL_TRUE, projectionMatrix.m);
   glUniformMatrix4fv(glGetUniformLocation(phongshader, "modelviewMatrix"), 1, GL_TRUE, vm2.m);
+  glUniform3fv(glGetUniformLocation(phongshader, "camPos"), 1, &cam.x);
   glUniform1i(glGetUniformLocation(phongshader, "texUnit"), 0);
 
   // Enable Z-buffering
@@ -117,9 +140,8 @@ void display(void) {
   DrawModel(model1, phongshader, "in_Position", "in_Normal", NULL);
   glDisable(GL_CULL_FACE);
   glDisable(GL_DEPTH_TEST);
-  // Done rendering the FBO
+  // Done rendering the FBO! Set up for rendering on screen, using the result as texture!
 
-  // Threshold shader
   // Activate threshold shader
   //=================================//
   glUseProgram(thres);
@@ -135,7 +157,7 @@ void display(void) {
   glDisable(GL_CULL_FACE);
   glDisable(GL_DEPTH_TEST);
 
-  unsigned int amount = 15;
+  unsigned int amount = 10;
   for (unsigned int i = 0; i < amount; i++) {
     glUseProgram(lowpassY);
     useFBO(fbo3, fbo2, 0L);
@@ -146,17 +168,20 @@ void display(void) {
     DrawModel(squareModel, lowpassX, "in_Position", NULL, "in_TexCoord");
   }
 
-  // glFlush();
-
+  glFlush();
   // activate the add-shader
-  glUseProgram(add);
-  glUniform1i(glGetUniformLocation(add, "glow"), 1.0);  // glow texUnit
-  useFBO(fboFinal, fbo2, fbo1);                         // Send in original and filtered -> get final
-  DrawModel(squareModel, add, "in_Position", NULL, "in_TexCoord");
+  /*/=================================//
+          glUseProgram(add);
+          glUniform1i(glGetUniformLocation(add,"glow"),1); //glow texUnit
 
-  // Render final scene
+          useFBO(fboFINAL, fbo2, fbo1); //Send in original and filtered -> get final
+          DrawModel(squareModel, add, "in_Position", NULL, "in_TexCoord");
+
+  //Render final scene
+  //=================================/*/
   glUseProgram(plaintextureshader);
-  useFBO(0L, fboFinal, fbo2);
+
+  useFBO(0L, fbo2, 0L);
   glClearColor(0.0, 0.0, 0.0, 0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -171,40 +196,10 @@ void reshape(GLsizei w, GLsizei h) {
   projectionMatrix = perspective(90, ratio, 1.0, 1000);
 }
 
-// Trackball
-
-int prevx = 0, prevy = 0;
-
-void mouseUpDown(int button, int state, int x, int y) {
-  if (state == GLUT_DOWN) {
-    prevx = x;
-    prevy = y;
-  }
-}
-
-void mouseDragged(int x, int y) {
-  vec3 p;
-  mat4 m;
-
-  // This is a simple and IMHO really nice trackball system:
-
-  // Use the movement direction to create an orthogonal rotation axis
-
-  p.y = x - prevx;
-  p.x = -(prevy - y);
-  p.z = 0;
-
-  // Create a rotation around this axis and premultiply it on the model-to-world matrix
-  // Limited to fixed camera! Will be wrong if the camera is moved!
-
-  m = ArbRotate(p, sqrt(p.x * p.x + p.y * p.y) / 50.0);  // Rotation in view coordinates
-  modelToWorldMatrix = Mult(m, modelToWorldMatrix);
-
-  prevx = x;
-  prevy = y;
-
-  glutPostRedisplay();
-}
+// This function is called whenever the computer is idle
+// As soon as the machine is idle, ask GLUT to trigger rendering of a new
+// frame
+void idle() { glutPostRedisplay(); }
 
 //-----------------------------main-----------------------------------------------
 int main(int argc, char *argv[]) {
@@ -217,9 +212,7 @@ int main(int argc, char *argv[]) {
   glutCreateWindow("Render to texture with FBO");
   glutDisplayFunc(display);
   glutReshapeFunc(reshape);
-  glutMouseFunc(mouseUpDown);
-  glutMotionFunc(mouseDragged);
-  glutRepeatingTimer(50);
+  glutIdleFunc(idle);
 
   init();
   glutMainLoop();
