@@ -83,12 +83,20 @@ void init(void) {
 
 //-------------------------------callback functions------------------------------------------
 
+void runfilter(GLuint shader, FBOstruct *in1, FBOstruct *in2, FBOstruct *out) {
+  glUseProgram(shader);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  // bind to 0 and 1 because those are coded for in the useFBO function
+  glUniform1i(glGetUniformLocation(shader, "texUnit"), 0);
+  glUniform1i(glGetUniformLocation(shader, "texUnit2"), 1);
+  useFBO(out, in1, in2);
+  DrawModel(squareModel, shader, "in_Position", NULL, "in_TexCoord");
+  glFlush();
+}
+
 void display(void) {
   mat4 vm2;
-
-  // This function is called whenever it is time to render
-  //  a new frame; due to the idle()-function below, this
-  //  function will get called several times per second
 
   // render to fbo1!
   useFBO(fbo1, 0L, 0L);
@@ -101,68 +109,43 @@ void display(void) {
   glUseProgram(phongshader);
 
   vm2 = viewMatrix * modelToWorldMatrix;
+
   // Scale and place bunny since it is too small
   vm2 = vm2 * T(0, -8.5, 0);
-  vm2 = vm2 * S(80, 80, 80);
+  vm2 = vm2 * S(100, 100, 100);
 
   glUniformMatrix4fv(glGetUniformLocation(phongshader, "projectionMatrix"), 1, GL_TRUE, projectionMatrix.m);
   glUniformMatrix4fv(glGetUniformLocation(phongshader, "modelviewMatrix"), 1, GL_TRUE, vm2.m);
-  glUniform1i(glGetUniformLocation(phongshader, "texUnit"), 0);
+  // glUniform1i(glGetUniformLocation(phongshader, "texUnit"), 0);
 
   // Enable Z-buffering
   glEnable(GL_DEPTH_TEST);
+
   // Enable backface culling
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
+
   DrawModel(model1, phongshader, "in_Position", "in_Normal", NULL);
-  glDisable(GL_CULL_FACE);
-  glDisable(GL_DEPTH_TEST);
-  // Done rendering the FBO
 
-  // Threshold shader
   // Activate threshold shader
-  //=================================//
-  glUseProgram(thres);
-  glBindTexture(GL_TEXTURE_2D, fbo1->texid);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-  useFBO(fbo2, fbo1, 0L);
-  DrawModel(squareModel, thres, "in_Position", NULL, "in_TexCoord");
+  runfilter(thres, fbo1, 0L, fbo2);
 
   // Activate lowpass shader
-  //=================================//
-  glDisable(GL_CULL_FACE);
-  glDisable(GL_DEPTH_TEST);
-
-  unsigned int amount = 15;
+  unsigned int amount = 50;
   for (unsigned int i = 0; i < amount; i++) {
-    glUseProgram(lowpassY);
-    useFBO(fbo3, fbo2, 0L);
-    DrawModel(squareModel, lowpassY, "in_Position", NULL, "in_TexCoord");
-
-    glUseProgram(lowpassX);
-    useFBO(fbo2, fbo3, 0L);
-    DrawModel(squareModel, lowpassX, "in_Position", NULL, "in_TexCoord");
+    runfilter(lowpassY, fbo2, 0L, fbo3);
+    runfilter(lowpassX, fbo3, 0L, fbo2);
   }
 
-  // glFlush();
-
   // activate the add-shader
-  glUseProgram(add);
-  glUniform1i(glGetUniformLocation(add, "glow"), 1.0);  // glow texUnit
-  useFBO(fboFinal, fbo2, fbo1);                         // Send in original and filtered -> get final
-  DrawModel(squareModel, add, "in_Position", NULL, "in_TexCoord");
+  runfilter(add, fbo1, fbo2, fboFinal);
 
   // Render final scene
   glUseProgram(plaintextureshader);
-  useFBO(0L, fboFinal, fbo2);
+  useFBO(0L, fbo2, 0L);
   glClearColor(0.0, 0.0, 0.0, 0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
   DrawModel(squareModel, plaintextureshader, "in_Position", NULL, "in_TexCoord");
-
-  glutSwapBuffers();
 }
 
 void reshape(GLsizei w, GLsizei h) {
