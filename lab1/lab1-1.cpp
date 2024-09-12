@@ -142,7 +142,7 @@ void display(void) {
 
   // Render final scene
   glUseProgram(plaintextureshader);
-  useFBO(0L, fbo2, 0L);
+  useFBO(0L, fboFinal, 0L);
   glClearColor(0.0, 0.0, 0.0, 0);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   DrawModel(squareModel, plaintextureshader, "in_Position", NULL, "in_TexCoord");

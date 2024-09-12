@@ -1,5 +1,4 @@
 // Bump mapping lab by Ingemar
-// Revised 2013 to use MicroGlut, VectorUtils3 and zpr
 
 // gcc lab1-2.c ../common/*.c -lGL -o lab1-2 -I../common
 // eller snarare (nyare system):
@@ -16,14 +15,13 @@
 #include "MicroGlut.h"
 #include "VectorUtils4.h"
 #include "GL_utilities.h"
-#include "LittleOBJLoaderX.h"
+#include "LittleOBJLoader.h"
 #include "LoadTGA.h"
 // uses framework Cocoa
 // uses framework OpenGL
 
 // initial width and heights
-#define W 512
-#define H 512
+const int initWidth=800, initHeight=800;
 
 #define NEAR 1.0
 #define FAR 150.0
@@ -219,7 +217,7 @@ void mouseDragged(int x, int y)
 	// Limited to fixed camera! Will be wrong if the camera is moved!
 
 	m = ArbRotate(p, sqrt(p.x*p.x + p.y*p.y) / 50.0); // Rotation in view coordinates	
-	modelToWorldMatrix = Mult(m, modelToWorldMatrix);
+	modelToWorldMatrix = m * modelToWorldMatrix;
 	
 	prevx = x;
 	prevy = y;
@@ -233,14 +231,14 @@ int main(int argc, char *argv[])
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH | GLUT_DOUBLE);
     glutInitContextVersion(3, 2);
-    glutInitWindowSize(W, H);
+    glutInitWindowSize(initWidth, initHeight);
     glutCreateWindow ("bump mapping lab");
     glutDisplayFunc(display);
 
     glutRepeatingTimer(50);
     glutReshapeFunc(reshape);
-	glutMouseFunc(mouseUpDown);
-	glutMotionFunc(mouseDragged);
+    glutMouseFunc(mouseUpDown);
+    glutMotionFunc(mouseDragged);
 
     init();
 

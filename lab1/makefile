@@ -26,6 +26,12 @@ lab1-1: lab1-1.o $(C_OBJECTS) $(CPP_OBJECTS)
 lab1-1.o: lab1-1.cpp
 	$(CXX) $(CXXFLAGS) -I $(COMMONDIR) -I $(LIBDIR) -c lab1-1.cpp -o lab1-1.o
 
+lab1-2: lab1-2.o $(C_OBJECTS) $(CPP_OBJECTS)
+	$(CXX) -o lab1-2 lab1-2.o $(C_OBJECTS) $(CPP_OBJECTS) $(LDFLAGS)
+
+lab1-2.o: lab1-2.cpp
+	$(CXX) $(CXXFLAGS) -I $(COMMONDIR) -I $(LIBDIR) -c lab1-2.cpp -o lab1-2.o
+
 # Pattern rule for C source files
 %.o: %.c
 	$(CC) $(CFLAGS) -I $(COMMONDIR) -I $(LIBDIR) -c $< -o $@
