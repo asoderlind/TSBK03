@@ -181,10 +181,10 @@ void generateMi() {
   // create relative translation matrices for all bones
   T_bones[0] = T(g_bones[0].pos.x, g_bones[0].pos.y, g_bones[0].pos.z);
   for (int i = 1; i < kMaxBones; i++) {
-    float deltax = g_bones[i].pos.x - g_bones[i - 1].pos.x;
-    float deltay = g_bones[i].pos.y - g_bones[i - 1].pos.y;
-    float deltaz = g_bones[i].pos.z - g_bones[i - 1].pos.z;
-    T_bones[i] = T(deltax, deltay, deltaz);
+    float delta_x = g_bones[i].pos.x - g_bones[i - 1].pos.x;
+    float delta_y = g_bones[i].pos.y - g_bones[i - 1].pos.y;
+    float delta_z = g_bones[i].pos.z - g_bones[i - 1].pos.z;
+    T_bones[i] = T(delta_x, delta_y, delta_z);
   }
 
   // create M_bone and M_bone_prime matrices for all bones
