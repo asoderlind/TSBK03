@@ -261,7 +261,7 @@ void DrawCylinder() {
   glUniformMatrix4fv(glGetUniformLocation(g_shader, "M_bone0"), 1, GL_TRUE, M_bone0.m);
   glUniformMatrix4fv(glGetUniformLocation(g_shader, "M_bone1"), 1, GL_TRUE, M_bone1.m);
 
-  DeformCylinder();
+  // DeformCylinder();
 
   setBoneLocation();
   setBoneRotation();
