@@ -152,6 +152,15 @@ void DeformCylinder() {
   // vec3 v1, v2;
   int row, corner;
 
+  mat4 M_bone0 = Mult(T(g_bones[0].pos), IdentityMatrix());
+  mat4 M_bone1 = Mult(T(g_bones[1].pos), IdentityMatrix());
+
+  mat4 M_bone0_prime = Mult(T(g_bones[0].pos), g_bones[0].rot);
+  mat4 M_bone1_prime = Mult(T(g_bones[1].pos), g_bones[1].rot);
+
+  mat4 M_0 = M_bone0_prime * inverse(M_bone0);
+  mat4 M_1 = M_bone0_prime * M_bone1_prime * inverse(M_bone1) * inverse(M_bone0);
+
   // för samtliga vertexar
   for (row = 0; row < kMaxRow; row++) {
     for (corner = 0; corner < kMaxCorners; corner++) {
@@ -169,18 +178,6 @@ void DeformCylinder() {
       // row goes long the length of the cylinder,
       // corner around each layer.
 
-      if (weight[row] == 0.0) {
-        mat4 T_bone = T(g_bones[0].pos);
-        mat4 R_bone = g_bones[0].rot;
-        g_vertsRes[row][corner] =
-            MultVec3(T_bone, MultVec3(R_bone, MultVec3(InvertMat4(T_bone), g_vertsOrg[row][corner])));
-      } else {
-        mat4 T_bone1 = T(g_bones[1].pos);
-        mat4 R_bone1 = g_bones[1].rot;
-        g_vertsRes[row][corner] =
-            MultVec3(T_bone1, MultVec3(R_bone1, MultVec3(InvertMat4(T_bone1), g_vertsOrg[row][corner])));
-      }
-
       // ---=========	Part 2: Skinning in CPU ===========------
       // Deform the cylindern from the skeleton in g_bones.
       // i g_bones.
@@ -191,6 +188,9 @@ void DeformCylinder() {
       // g_boneWeights are blending weights for the bones.
       // g_vertsOrg are original vertex data.
       // g_vertsRes are modified vertex data to send to OpenGL.
+
+      g_vertsRes[row][corner] = g_boneWeights[row][corner].x * M_0 * g_vertsOrg[row][corner] +
+                                g_boneWeights[row][corner].y * M_1 * g_vertsOrg[row][corner];
     }
   }
 }
