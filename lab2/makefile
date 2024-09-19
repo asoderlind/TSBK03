@@ -1,13 +1,44 @@
 # set this variable to the director in which you saved the common files
-commondir = ../common/
+COMMONDIR = ../common/
+LIBDIR = lib/
 
-all : lab2-1 lab2-2
 
-lab2-1 : skinning.cpp $(commondir)GL_utilities.c $(commondir)Linux/MicroGlut.c
-	g++ -Wall -o skinning -I$(commondir) -I$(commondir)/Linux -DGL_GLEXT_PROTOTYPES skinning.cpp $(commondir)GL_utilities.c $(commondir)Linux/MicroGlut.c -lXt -lX11 -lGL -lm
+CC = gcc
+CXX = g++
+CFLAGS = -Wall -DGL_GLEXT_PROTOTYPES -Wno-deprecated-declarations
+CXXFLAGS = $(CFLAGS) -std=c++17
+LDFLAGS = -lm -framework OpenGL -framework Cocoa -framework CoreGraphics -Wno-deprecated-declarations
 
-lab2-2 : skinning2.cpp $(commondir)GL_utilities.c $(commondir)Linux/MicroGlut.c
-	g++ -Wall -o skinning2 -I$(commondir) -I$(commondir)/Linux -DGL_GLEXT_PROTOTYPES skinning2.cpp $(commondir)GL_utilities.c  $(commondir)Linux/MicroGlut.c -lXt -lX11 -lGL -lm
+C_SOURCES = \
+$(COMMONDIR)GL_utilities.c \
+$(COMMONDIR)LoadTGA.c \
+$(COMMONDIR)/MicroGlut.m \
+
+CPP_SOURCES = $(shell find $(LIBDIR) -type f -name '*.cpp')
+
+# Object files
+C_OBJECTS := $(C_SOURCES:.c=.o)
+CPP_OBJECTS := $(CPP_SOURCES:.cpp=.o)
+
+lab2-A1: lab2-A1.o $(C_OBJECTS) $(CPP_OBJECTS)
+	$(CXX) -o lab2-A1 lab2-A1.o $(C_OBJECTS) $(CPP_OBJECTS) $(LDFLAGS)
+
+lab2-A1.o: lab2-A1.cpp
+	$(CXX) $(CXXFLAGS) -I $(COMMONDIR) -I $(LIBDIR) -c lab2-A1.cpp -o lab2-A1.o
+
+lab2-2: lab2-2.o $(C_OBJECTS) $(CPP_OBJECTS)
+	$(CXX) -o lab2-2 lab2-2.o $(C_OBJECTS) $(CPP_OBJECTS) $(LDFLAGS)
+
+lab2-2.o: lab2-2.cpp
+	$(CXX) $(CXXFLAGS) -I $(COMMONDIR) -I $(LIBDIR) -c lab2-2.cpp -o lab2-2.o
+
+# Pattern rule for C source files
+%.o: %.c
+	$(CC) $(CFLAGS) -I $(COMMONDIR) -I $(LIBDIR) -c $< -o $@
+
+# Pattern rule for C++ source files
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -I $(COMMONDIR) -I $(LIBDIR) -c $< -o $@
 
 clean :
-	rm skinning skinning2
+	rm lab2-1 lab2-1.o $(CPP_OBJECTS)
