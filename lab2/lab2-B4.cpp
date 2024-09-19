@@ -53,6 +53,8 @@ Model *cylinderModel;  // Collects all the above for drawing with glDrawElements
 
 mat4 modelViewMatrix, projectionMatrix;
 
+mat4 T_bones[kMaxBones], M_i[kMaxBones];
+
 ///////////////////////////////////////////////////
 //		I N I T  B O N E  W E I G H T S
 // Desc:  initierar benvikterna
@@ -173,6 +175,37 @@ void setupBones(void) {
   }
 }
 
+void generateMi() {
+  mat4 M_bone[kMaxBones], M_bone_prime[kMaxBones];
+
+  // create relative translation matrices for all bones
+  T_bones[0] = T(g_bones[0].pos.x, g_bones[0].pos.y, g_bones[0].pos.z);
+  for (int i = 1; i < kMaxBones; i++) {
+    float deltax = g_bones[i].pos.x - g_bones[i - 1].pos.x;
+    float deltay = g_bones[i].pos.y - g_bones[i - 1].pos.y;
+    float deltaz = g_bones[i].pos.z - g_bones[i - 1].pos.z;
+    T_bones[i] = T(deltax, deltay, deltaz);
+  }
+
+  // create M_bone and M_bone_prime matrices for all bones
+  for (int i = 0; i < kMaxBones; i++) {
+    M_bone[i] = Mult(T_bones[i], g_bones[i].rot);
+    M_bone_prime[i] = Mult(M_bone[i], g_bonesRes[i].rot);
+  }
+
+  for (int i = 0; i < kMaxBones; i++) {
+    M_i[i] = IdentityMatrix();  // Initialize with identity matrix
+    // Forward multiplication
+    for (int j = 0; j <= i; j++) {
+      M_i[i] = M_i[i] * M_bone_prime[j];
+    }
+    // Backward multiplication of inverse matrices
+    for (int j = i; j >= 0; j--) {
+      M_i[i] = M_i[i] * InvertMat4(M_bone[j]);
+    }
+  }
+}
+
 ///////////////////////////////////////////////////////
 //		D E F O R M  C Y L I N D E R
 //
@@ -184,6 +217,7 @@ void DeformCylinder() {
   // for all vertices
   for (row = 0; row < kMaxRow; row++) {
     for (corner = 0; corner < kMaxCorners; corner++) {
+      g_vertsRes[row][corner] = g_vertsOrg[row][corner];
       // ---------=========  PART 4 ===========---------
       // TODO: Deform the mesh using all bones
       //
@@ -193,6 +227,12 @@ void DeformCylinder() {
       // g_boneWeights
       // g_vertsOrg
       // g_vertsRes
+
+      vec3 sum = SetVector(0, 0, 0);
+      for (int bone = 0; bone < kMaxBones; bone++) {
+        sum += g_boneWeights[row][corner][bone] * MultVec3(M_i[bone], g_vertsOrg[row][corner]);
+      }
+      g_vertsRes[row][corner] = sum;
     }
   }
 }
@@ -235,9 +275,7 @@ void setBoneLocation(void) {}
 void DrawCylinder() {
   animateBones();
 
-  // ---------=========  UPG 2 (extra) ===========---------
-  // Move the vertex calculations from DeformCylinder into a vertex shader.
-  // The current one is "shader.vert"
+  generateMi();
 
   DeformCylinder();
 
