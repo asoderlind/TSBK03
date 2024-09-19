@@ -26,6 +26,12 @@ lab2-A1: lab2-A1.o $(C_OBJECTS) $(CPP_OBJECTS)
 lab2-A1.o: lab2-A1.cpp
 	$(CXX) $(CXXFLAGS) -I $(COMMONDIR) -I $(LIBDIR) -c lab2-A1.cpp -o lab2-A1.o
 
+lab2-A2: lab2-A2.o $(C_OBJECTS) $(CPP_OBJECTS)
+	$(CXX) -o lab2-A2 lab2-A2.o $(C_OBJECTS) $(CPP_OBJECTS) $(LDFLAGS)
+
+lab2-A2.o: lab2-A2.cpp
+	$(CXX) $(CXXFLAGS) -I $(COMMONDIR) -I $(LIBDIR) -c lab2-A2.cpp -o lab2-A2.o
+
 lab2-2: lab2-2.o $(C_OBJECTS) $(CPP_OBJECTS)
 	$(CXX) -o lab2-2 lab2-2.o $(C_OBJECTS) $(CPP_OBJECTS) $(LDFLAGS)
 
