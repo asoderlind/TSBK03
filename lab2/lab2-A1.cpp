@@ -169,6 +169,18 @@ void DeformCylinder() {
       // row goes long the length of the cylinder,
       // corner around each layer.
 
+      if (weight[row] == 0.0) {
+        mat4 T_bone = T(g_bones[0].pos);
+        mat4 R_bone = g_bones[0].rot;
+        g_vertsRes[row][corner] =
+            MultVec3(T_bone, MultVec3(R_bone, MultVec3(InvertMat4(T_bone), g_vertsOrg[row][corner])));
+      } else {
+        mat4 T_bone1 = T(g_bones[1].pos);
+        mat4 R_bone1 = g_bones[1].rot;
+        g_vertsRes[row][corner] =
+            MultVec3(T_bone1, MultVec3(R_bone1, MultVec3(InvertMat4(T_bone1), g_vertsOrg[row][corner])));
+      }
+
       // ---=========	Part 2: Skinning in CPU ===========------
       // Deform the cylindern from the skeleton in g_bones.
       // i g_bones.

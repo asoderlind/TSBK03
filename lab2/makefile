@@ -20,11 +20,17 @@ CPP_SOURCES = $(shell find $(LIBDIR) -type f -name '*.cpp')
 C_OBJECTS := $(C_SOURCES:.c=.o)
 CPP_OBJECTS := $(CPP_SOURCES:.cpp=.o)
 
-lab2-1: skinning.o $(C_OBJECTS) $(CPP_OBJECTS)
-	$(CXX) -o lab2-1 skinning.o $(C_OBJECTS) $(CPP_OBJECTS) $(LDFLAGS)
+lab2-A1: skinning.o $(C_OBJECTS) $(CPP_OBJECTS)
+	$(CXX) -o lab2-A1 skinning.o $(C_OBJECTS) $(CPP_OBJECTS) $(LDFLAGS)
 
-lab2-1.o: skinning.cpp
-	$(CXX) $(CXXFLAGS) -I $(COMMONDIR) -I $(LIBDIR) -c skinning.cpp -o skinning.o
+lab2-A1.o: lab2-A1.cpp
+	$(CXX) $(CXXFLAGS) -I $(COMMONDIR) -I $(LIBDIR) -c lab2-A1.cpp -o skinning.o
+
+lab2-A2: skinning.o $(C_OBJECTS) $(CPP_OBJECTS)
+	$(CXX) -o lab2-A2 skinning.o $(C_OBJECTS) $(CPP_OBJECTS) $(LDFLAGS)
+
+lab2-A2.o: lab2-A2.cpp
+	$(CXX) $(CXXFLAGS) -I $(COMMONDIR) -I $(LIBDIR) -c lab2-A2.cpp -o skinning.o
 
 lab2-2: skinning2.o $(C_OBJECTS) $(CPP_OBJECTS)
 	$(CXX) -o lab2-2 skinning2.o $(C_OBJECTS) $(CPP_OBJECTS) $(LDFLAGS)
