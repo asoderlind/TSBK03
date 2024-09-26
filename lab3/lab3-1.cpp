@@ -56,7 +56,7 @@ Material ballMt = {{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0, 0.0}, 0.1, 0.6, 1.0, 50
          tableMt = {{0.2, 0.1, 0.0, 1.0}, {0.4, 0.2, 0.1, 0.0}, 0.1, 0.6, 1.0, 5.0},
          tableSurfaceMt = {{0.1, 0.5, 0.1, 1.0}, {0.0, 0.0, 0.0, 0.0}, 0.1, 0.6, 1.0, 0.0};
 
-enum { kNumBalls = 16 };  // Change as desired, max 16
+enum { kNumBalls = 4 };  // Change as desired, max 16
 
 //------------------------------Globals---------------------------------
 ModelTexturePair tableAndLegs, tableSurf;
@@ -106,6 +106,12 @@ void loadMaterial(Material mt) {
   glUniform1fv(glGetUniformLocation(shader, "shininess"), 1, &mt.shininess);
 }
 
+float ballDistance(Ball& a, Ball& b) {
+  return sqrt(pow(a.X.x - b.X.x, 2) + pow(a.X.y - b.X.y, 2) + pow(a.X.z - b.X.z, 2));
+}
+
+bool isColliding(Ball& a, Ball& b) { return ballDistance(a, b) < 2 * kBallSize; }
+
 //---------------------------------- physics update and billiard table rendering ----------------------------------
 void updateWorld() {
   // Zero forces
@@ -126,7 +132,64 @@ void updateWorld() {
   // Detect collisions, calculate speed differences, apply forces (uppgift 2)
   for (i = 0; i < kNumBalls; i++)
     for (j = i + 1; j < kNumBalls; j++) {
-      // YOUR CODE HERE
+      if (isColliding(ball[i], ball[j])) {
+        // printf("Collision between ball %d and ball %d\n", i, j);
+
+        vec3 dirIntersection = normalize(ball[j].X - ball[i].X);
+        float absIntersection = 2 * kBallSize - ballDistance(ball[i], ball[j]);
+        ball[i].X -= 0.5 * dirIntersection * absIntersection;
+        ball[j].X += 0.5 * dirIntersection * absIntersection;
+
+        // relative position
+        vec3 r_A = (ball[j].X - ball[j].X) / 2.f;
+        vec3 r_B = (ball[i].X - ball[j].X) / 2.f;
+        vec3 n = normalize(r_B);  // normal vector
+
+        // initial angular velocities
+        vec3 omega_a_before = ball[i].omega;
+        vec3 omega_b_before = ball[j].omega;
+
+        // initial velocities
+        vec3 v_a_before = ball[i].v;
+        vec3 v_b_before = ball[j].v;
+
+        // relative velocity
+        vec3 v_p_A = v_a_before + cross(omega_a_before, r_A);
+        vec3 v_p_B = v_b_before + cross(omega_b_before, r_B);
+        vec3 v_rel = v_p_A - v_p_B;
+        GLfloat v_rel_before = dot(v_rel, n);
+
+        // all balls are the same => I_A = I_B = I
+        GLfloat I_element_i = (2.f / 5.f) * ball[i].mass * pow(kBallSize, 2);
+        mat4 I_A = IdentityMatrix();
+        I_A.m[0] = I_element_i;
+        I_A.m[5] = I_element_i;
+        I_A.m[10] = I_element_i;
+
+        GLfloat I_element_j = (2.f / 5.f) * ball[j].mass * pow(kBallSize, 2);
+        mat4 I_B = IdentityMatrix();
+        I_B.m[0] = I_element_j;
+        I_B.m[5] = I_element_j;
+        I_B.m[10] = I_element_j;
+
+        float restitution = 1.0;
+
+        float numerator = -(1 + restitution) * v_rel_before;
+        /* float denominator =
+            2 / ball[i].mass + dot(n, I_inv * cross(cross(r_A, n), r_A)) + dot(n, I_inv * cross(cross(r_B, n), r_B)); */
+        float denominator = 1 / ball[i].mass + 1 / ball[j].mass;
+        float j_imp = numerator / denominator;
+
+        vec3 impulse = j_imp * n;
+
+        // apply impulse
+        ball[i].P += impulse;
+        ball[j].P -= impulse;
+
+        // update angular velocities
+        ball[i].omega = omega_a_before + j_imp * inverse(I_A) * cross(r_A, n);
+        ball[j].omega = omega_b_before - j_imp * inverse(I_B) * cross(r_B, n);
+      }
     }
 
   // Control rotation here to movement only, no friction (uppgift 1)
