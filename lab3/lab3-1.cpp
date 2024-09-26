@@ -23,7 +23,7 @@ const int initWidth = 800, initHeight = 800;
 #define NEAR 1.0
 #define FAR 100.0
 
-#define kBallSize 0.1
+#define kBallSize 0.1  // Radius of a ball
 
 #define abs(x) (x > 0.0 ? x : -x)
 
@@ -42,7 +42,7 @@ typedef struct {
   vec3 F, T;  // accumulated force and torque
 
   //  mat4 J, Ji; We could have these but we can live without them for spheres.
-  vec3 omega;  // Angular momentum
+  vec3 omega;  // Angular velocity
   vec3 v;      // Change in velocity
 
 } Ball;
@@ -131,7 +131,7 @@ void updateWorld() {
 
   // Control rotation here to movement only, no friction (uppgift 1)
   for (i = 0; i < kNumBalls; i++) {
-    // YOUR CODE HERE
+    ball[i].omega = cross(ball[i].v, SetVector(0, -5, 0));
   }
 
   // Control rotation here to reflect
