@@ -32,6 +32,12 @@ lab3-2-2: lab3-2-2.o $(C_OBJECTS) $(CPP_OBJECTS)
 lab3-2-2.o: lab3-2-2.cpp
 	$(CXX) $(CXXFLAGS) -I $(COMMONDIR) -I $(LIBDIR) -c lab3-2-2.cpp -o lab3-2-2.o
 
+lab3-3: lab3-3.o $(C_OBJECTS) $(CPP_OBJECTS)
+	$(CXX) -o lab3-3 lab3-3.o $(C_OBJECTS) $(CPP_OBJECTS) $(LDFLAGS)
+
+lab3-3.o: lab3-3.cpp
+	$(CXX) $(CXXFLAGS) -I $(COMMONDIR) -I $(LIBDIR) -c lab3-3.cpp -o lab3-3.o
+
 # Pattern rule for C source files
 %.o: %.c
 	$(CC) $(CFLAGS) -I $(COMMONDIR) -I $(LIBDIR) -c $< -o $@
@@ -41,4 +47,4 @@ lab3-2-2.o: lab3-2-2.cpp
 	$(CXX) $(CXXFLAGS) -I $(COMMONDIR) -I $(LIBDIR) -c $< -o $@
 
 clean :
-	rm lab2-1 skinning.o lab2-2 skinning2.o $(CPP_OBJECTS)
+	rm lab3-1.o lab3-1 lab3-2-2.o lab3-2-2 $(CPP_OBJECTS)

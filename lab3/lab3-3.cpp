@@ -56,7 +56,7 @@ Material ballMt = {{1.0, 1.0, 1.0, 1.0}, {1.0, 1.0, 1.0, 0.0}, 0.1, 0.6, 1.0, 50
          tableMt = {{0.2, 0.1, 0.0, 1.0}, {0.4, 0.2, 0.1, 0.0}, 0.1, 0.6, 1.0, 5.0},
          tableSurfaceMt = {{0.1, 0.5, 0.1, 1.0}, {0.0, 0.0, 0.0, 0.0}, 0.1, 0.6, 1.0, 0.0};
 
-enum { kNumBalls = 4 };  // Change as desired, max 16
+enum { kNumBalls = 16 };  // Change as desired, max 16
 
 //------------------------------Globals---------------------------------
 ModelTexturePair tableAndLegs, tableSurf;
@@ -113,6 +113,21 @@ float ballDistance(Ball& a, Ball& b) {
 bool isColliding(Ball& a, Ball& b) { return ballDistance(a, b) < 2 * kBallSize; }
 
 //---------------------------------- physics update and billiard table rendering ----------------------------------
+
+mat4 calculateInertiaTensor(float mass, float radius) {
+  float I_element = (2.f / 5.f) * mass * pow(radius, 2);
+  mat4 I = IdentityMatrix();
+  I.m[0] = I_element;
+  I.m[5] = I_element;
+  I.m[10] = I_element;
+  return I;
+}
+
+vec3 calculateOmega(const mat4& I, const vec3& L) {
+  mat4 I_inv = InvertMat4(I);
+  return I_inv * L;
+}
+
 void updateWorld() {
   // Zero forces
   int i, j;
@@ -134,11 +149,21 @@ void updateWorld() {
     for (j = i + 1; j < kNumBalls; j++) {
       if (isColliding(ball[i], ball[j])) {
         // printf("Collision between ball %d and ball %d\n", i, j);
-
-        vec3 dirIntersection = normalize(ball[j].X - ball[i].X);
-        float absIntersection = 2 * kBallSize - ballDistance(ball[i], ball[j]);
-        ball[i].X -= 0.5 * dirIntersection * absIntersection;
-        ball[j].X += 0.5 * dirIntersection * absIntersection;
+        // vec3 nonNormalizedDirIntersection = ball[j].X - ball[i].X;
+        // vec3 dirIntersection;
+        // float absIntersection;
+        // if (nonNormalizedDirIntersection.x == 0 && nonNormalizedDirIntersection.y == 0 &&
+        //     nonNormalizedDirIntersection.z == 0) {
+        //   // the balls are completely on top of each other
+        //   // push out in random direction
+        //   dirIntersection = vec3(rand() % 100, 0, rand() % 100);
+        //   absIntersection = 2 * kBallSize * 0.00001;
+        // } else {
+        //   dirIntersection = normalize(ball[j].X - ball[i].X);
+        //   absIntersection = (2 * kBallSize - ballDistance(ball[i], ball[j])) * 0.7;
+        // }
+        // ball[i].X -= 0.5 * dirIntersection * absIntersection;
+        // ball[j].X += 0.5 * dirIntersection * absIntersection;
 
         // relative position
         vec3 r_A = (ball[j].X - ball[i].X) / 2.f;
@@ -159,23 +184,13 @@ void updateWorld() {
         vec3 v_rel = v_p_A - v_p_B;
         GLfloat v_rel_before = dot(v_rel, n);
 
-        // all balls are the same => I_A = I_B = I
-        GLfloat I_element_i = (2.f / 5.f) * ball[i].mass * pow(kBallSize, 2);
-        mat4 I_A = IdentityMatrix();
-        I_A.m[0] = I_element_i;
-        I_A.m[5] = I_element_i;
-        I_A.m[10] = I_element_i;
-
-        GLfloat I_element_j = (2.f / 5.f) * ball[j].mass * pow(kBallSize, 2);
-        mat4 I_B = IdentityMatrix();
-        I_B.m[0] = I_element_j;
-        I_B.m[5] = I_element_j;
-        I_B.m[10] = I_element_j;
+        mat4 I_A = calculateInertiaTensor(ball[i].mass, kBallSize);
+        mat4 I_B = calculateInertiaTensor(ball[j].mass, kBallSize);
 
         float restitution = 1.0;
         // Testfall 3
         // restitution = 0.5;
-        restitution = 0.0;
+        // restitution = 0.0;
 
         float numerator = -(1 + restitution) * v_rel_before;
         /* float denominator =
@@ -190,8 +205,8 @@ void updateWorld() {
         ball[j].P -= impulse;
 
         // update angular velocities
-        ball[i].omega = omega_a_before + j_imp * inverse(I_A) * cross(r_A, n);
-        ball[j].omega = omega_b_before - j_imp * inverse(I_B) * cross(r_B, n);
+        // ball[i].omega = omega_a_before + j_imp * inverse(I_A) * cross(r_A, n);
+        // ball[j].omega = omega_b_before - j_imp * inverse(I_B) * cross(r_B, n);
 
         // update torque
         ball[i].T += cross(r_A, impulse);
@@ -202,7 +217,6 @@ void updateWorld() {
   // Control rotation here to reflect
   // friction against floor, simplified as well as more correct (uppgift 3)
   for (i = 0; i < kNumBalls; i++) {
-    // YOUR CODE HERE
   }
 
   // Update state, follows the book closely
@@ -214,10 +228,39 @@ void updateWorld() {
     //		omega := I^-1 * L
     // float I = 2.0 / 5.0 * ball[i].mass * kBallSize * kBallSize;
     // ball[i].omega = (1.f / I) * ball[i].L;
-    ball[i].omega = cross(ball[i].v, SetVector(0, -5, 0));
+    // ball[i].omega = cross(ball[i].v, SetVector(0, -5, 0));
 
     //		v := P * 1/mass
+    // 1. Calculate current velocity and angular velocity
     ball[i].v = ball[i].P * 1.0 / (ball[i].mass);
+    // printf("v: %f %f %f\n", ball[i].v.x, ball[i].v.y, ball[i].v.z);
+    mat4 I = calculateInertiaTensor(ball[i].mass, kBallSize);
+    ball[i].omega = calculateOmega(I, ball[i].L);
+    // printf("omega: %f %f %f\n", ball[i].omega.x, ball[i].omega.y, ball[i].omega.z);
+
+    // 2. Calculate force against the ground
+    vec3 contactPoint = SetVector(ball[i].X.x, -kBallSize, ball[i].X.z);
+    // printf("contactPoint: %f %f %f\n", contactPoint.x, contactPoint.y, contactPoint.z);
+    vec3 r = contactPoint - ball[i].X;
+    // printf("r: %f %f %f\n", r.x, r.y, r.z);
+    vec3 v_contact = ball[i].v + cross(ball[i].omega, r);
+    // printf("v_contact: %f %f %f\n", v_contact.x, v_contact.y, v_contact.z);
+
+    float friction_coefficient = 0.1;  // Adjust as needed
+    float g = 9.81;
+    vec3 friction_force = SetVector(0, 0, 0);
+    if (v_contact.x != 0 || v_contact.y != 0 || v_contact.z != 0) {
+      friction_force = -friction_coefficient * ball[i].mass * g * normalize(v_contact);
+    }
+    // printf("v_contact: %f %f %f\n", v_contact.x, v_contact.y, v_contact.z);
+    ball[i].F += friction_force;
+
+    // 3. Calculate torque from friction force
+    ball[i].T = cross(r, friction_force);
+    // printf("T: %f %f %f\n", ball[i].T.x, ball[i].T.y, ball[i].T.z);
+
+    // printf("L: %f %f %f\n", ball[i].L.x, ball[i].L.y, ball[i].L.z);
+    // printf("omega: %f %f %f\n", ball[i].omega.x, ball[i].omega.y, ball[i].omega.z);
     //		X := X + v*dT
     dX = ball[i].v * deltaT;      // dX := v*dT
     ball[i].X = ball[i].X + dX;   // X := X + dX
@@ -229,7 +272,7 @@ void updateWorld() {
     //		P := P + F * dT
     dP = ball[i].F * deltaT;     // dP := F*dT
     ball[i].P = ball[i].P + dP;  // P := P + dP
-                                 //		L := L + t * dT
+    //		L := L + t * dT
     dL = ball[i].T * deltaT;     // dL := T*dT
     ball[i].L = ball[i].L + dL;  // L := L + dL
 
@@ -309,17 +352,31 @@ void init() {
     ball[i].mass = 1.0;
     ball[i].X = vec3(0.0, 0.0, 0.0);
     ball[i].P = vec3(((float)(i % 13)) / 50.0, 0.0, ((float)(i % 15)) / 50.0);
+    // ball[i].P = vec3(0.0, 0.0, 0.0);
+    printf("P: %f %f %f\n", ball[i].P.x, ball[i].P.y, ball[i].P.z);
     ball[i].R = IdentityMatrix();
+    ball[i].L = SetVector(0, 0, 0);
+    ball[i].F = SetVector(0, 0, 0);
+    ball[i].T = SetVector(0, 0, 0);
+    ball[i].omega = SetVector(0, 0, 0);
+    ball[i].v = SetVector(0, 0, 0);
+    ball[i].P = SetVector(0, 0, 0);
   }
 
   ball[0].X = vec3(0, 0, 0);
   ball[1].X = vec3(0, 0, 0.5);
   ball[2].X = vec3(0.0, 0, 1.0);
   ball[3].X = vec3(0, 0, 1.5);
-  ball[0].P = vec3(0, 0, 0);
-  ball[1].P = vec3(0, 0, 0);
-  ball[2].P = vec3(0, 0, 0);
-  ball[3].P = vec3(0, 0, -1.00);
+  // ball[0].P = vec3(0, 0, 0);
+  // ball[1].P = vec3(0, 0, 0);
+  // ball[2].P = vec3(0, 0, -1);
+  ball[3].P = vec3(0, 0, -2.00);
+  // ball[3].P = vec3(0, 0, 0.0);
+
+  // for (i = 4; i < kNumBalls; i++) {
+  //   // add small position offsets to avoid initial collisions
+  //   ball[i].X = vec3(0, 0, 0.5 + 0.001 * i);
+  // }
 
   // Testfall 2
   // ball[0].mass = 5.0;
